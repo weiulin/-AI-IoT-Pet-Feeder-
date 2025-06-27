@@ -1,0 +1,206 @@
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include "HX711.h"
+#include "DHT.h"
+
+// WiFi Credentials
+const char *ssid = "CHT 76197-1";
+const char *password = "0928129357";
+
+// HX711 Configuration
+const int LOADCELL_DOUT_PIN = 15;
+const int LOADCELL_SCK_PIN = 14;
+HX711 scale;
+
+// DHT Configuration
+#define DHTPIN 12
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Web Server
+AsyncWebServer server(80);
+
+// HTML content
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>監測數據</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1, h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #data {
+      text-align: center;
+    }
+    input[type="text"] {
+      padding: 10px;
+      width: 200px;
+      margin-right: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #data p {
+      margin-top: 10px;
+    }
+  </style>
+  <script>
+    function loadData() {
+      fetch('/data')
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById("data").innerHTML = data;
+        });
+    }
+
+    function setTime() {
+      const timeInput = document.getElementById("timeInput").value;
+      fetch('/set-time', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'time=' + encodeURIComponent(timeInput),
+      })
+      .then(response => response.text())
+      .then(data => {
+        alert(data);
+      });
+    }
+
+    setInterval(loadData, 1000); // 每秒加载一次数据
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>監測數據</h1>
+    <div id="data">
+      <p>加載中...</p>
+    </div>
+  </div>
+</body>
+</html>
+
+)rawliteral";
+
+// Function to get sensor data
+String getSensorData() {
+  String data = "";
+  
+  // HX711 Data
+  if (scale.is_ready()) {
+    long weight = scale.get_units(10);
+    data += "<h2>重量監測</h2>";
+    data += "<p>重量: " + String(weight) + " 克</p>";
+  } else {
+    data += "<h2>餵食盤重量監測</h2>";
+    data += "<p>HX711 未找到.</p>";
+  }
+  
+  // DHT Data
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  data += "<h2>溫濕度監測</h2>";
+  data += "<p>濕度: " + String(h) + "%</p>";
+  data += "<p>溫度: " + String(t) + " *C</p>";
+  
+  return data;
+}
+
+// Function to handle setting time
+void handleSetTime(AsyncWebServerRequest *request) {
+  if (request->hasParam("time", true)) {
+    String timeValue = request->getParam("time", true)->value();
+    Serial.println("時間設置成功：" + timeValue);
+    request->send(200, "text/plain", "時間設置成功");
+
+    // 解析时间并设置（这只是一个示例）
+    String setHour = timeValue.substring(0, 2);
+    String setMin = timeValue.substring(2);
+    int hour = setHour.toInt();
+    int minute = setMin.toInt();
+
+    // 在此处添加代码以在你的应用程序中设置实际时间
+    Serial.println("設置的小時：" + setHour);
+    Serial.println("設置的分鐘：" + setMin);
+  } else {
+    request->send(400, "text/plain", "未提供時間");
+    Serial.println("未提供時間");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Initialize HX711
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  Serial.println("Calibrating... Place known weight on scale");
+  delay(5000); // 等待5秒，以便放置已知重量的物體
+  float knownWeight = 500.0; // 输入已知重量（如500克）的实际值
+  scale.set_scale();
+  scale.tare();
+  long reading = scale.get_units(10);
+  float calibration_factor = reading / knownWeight;
+  scale.set_scale(calibration_factor);
+  Serial.print("Calibration factor: ");
+  Serial.println(calibration_factor);
+  Serial.println("Calibration done");
+  
+  // Initialize DHT
+  dht.begin();
+
+  // Connect to WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("連線中...");
+  }
+  Serial.println("WiFi 已連線");
+
+  // Initialize Web Server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send_P(200, "text/html", index_html);
+  });
+
+  server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html", getSensorData());
+  });
+
+  server.on("/set-time", HTTP_POST, handleSetTime);
+
+  server.begin();
+}
+
+void loop() {
+  // No need to do anything in loop, server handles the requests
+}

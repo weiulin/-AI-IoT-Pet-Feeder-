@@ -1,0 +1,132 @@
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <TimeLib.h>  // 包含时间库
+
+const char *ssid = "CHT 76197-1";
+const char *password = "0928129357";
+
+AsyncWebServer server(80);
+int targetHour = -1;    // 设定的小时
+int targetMinute = -1;  // 设定的分钟
+int targetValue = -1;   // 设定的数值
+int servoPin = 2;       // 伺服马达连接的 GPIO pin（这里假设使用 GPIO 2）
+
+
+void setup() {
+  Serial.begin(115200);
+
+  // 初始化 WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("連線中...");
+  }
+  Serial.println("接受到 WiFi");
+
+  // 设置时区为台北时区（东八区）
+  configTime(28800, 0, "pool.ntp.org");
+
+  // 开始 HTTP 服务器
+
+  server.on("/set-time", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("time", true)) {
+      String timeValue = request->getParam("time", true)->value();
+      Serial.println("時間設置成功：" + timeValue);
+      request->send(200, "text/plain", "時間設置成功");
+
+      String setHour = timeValue.substring(0, 2);
+      String setMin = timeValue.substring(2);
+      int hour = setHour.toInt();
+      int minute = setMin.toInt();
+      targetHour = hour;
+      targetMinute = minute;
+
+      Serial.println("設置的小時：" + setHour);
+      Serial.println("設置的分鐘：" + setMin);
+    } else {
+      request->send(400, "text/plain", "未提供時間");
+      Serial.println("未提供時間");
+    }
+  });
+
+  server.on("/set-value", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("value", true)) {
+      String value = request->getParam("value", true)->value();
+      Serial.println("數值設置成功：" + value);
+      request->send(200, "text/plain", "數值設置成功");
+
+      int val = value.toInt();
+      targetValue = val;
+
+      Serial.println("設置的數值：" + value);
+    } else {
+      request->send(400, "text/plain", "未提供數值");
+      Serial.println("未提供數值");
+    }
+  });
+
+  server.on("/get-time", HTTP_GET, [](AsyncWebServerRequest *request) {
+    time_t now = time(nullptr);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+    char strftime_buf[64];
+    strftime(strftime_buf, sizeof(strftime_buf), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    request->send(200, "text/plain", strftime_buf);
+  });
+
+  server.begin();
+}
+
+void loop() {
+  // 获取当前时间
+  time_t now = time(nullptr);
+  struct tm timeinfo;
+  localtime_r(&now, &timeinfo);
+
+  // 检查是否到达设定的时间
+
+  // 每15秒返回一次时间
+  static int counter = 0; // 声明并初始化计数器为静态变量，确保其值在函数调用之间保持不变
+
+  if (counter >= 1) { // 检查计数器是否达到15
+    // 重置计数器
+    counter = 0;
+
+    // 获取当前小时和分钟
+    std::string hourStr = std::to_string(timeinfo.tm_hour);   // 将小时转换为字符串
+    std::string minuteStr = std::to_string(timeinfo.tm_min);  // 将分钟转换为字符串
+
+    // 如果小时或分钟只有一位数，则在前面补0
+    if (hourStr.length() == 1) {
+      hourStr = "0" + hourStr;
+    }
+    if (minuteStr.length() == 1) {
+      minuteStr = "0" + minuteStr;
+    }
+
+    // 打印当前时间
+    Serial.print("Current Time: ");
+    Serial.print(hourStr.c_str());  // 打印小时
+    Serial.print(":");
+    Serial.println(minuteStr.c_str());  // 打印分钟
+
+  if (targetHour == timeinfo.tm_hour && targetMinute == timeinfo.tm_min) {
+    // 计算马达运转时间为设定的数值除以3
+    targetValue = targetValue / 3;
+    //Serial.println("馬達運轉 " + String(targetValue) + " 秒");
+
+    // 设置 PWM 输出值控制马达
+    analogWrite(servoPin, 180); // 这里使用了 180 度作为示例角度
+    delay(targetValue * 1000); // 持续运转时间
+    analogWrite(servoPin, 0); // 停止马达
+    targetHour = -1;
+    targetMinute = -1;
+  }
+  }
+
+  // 增加计数器
+  counter++;
+
+  delay(1000);  // 延迟一秒钟，避免过多的处理
+}

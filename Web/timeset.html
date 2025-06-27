@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feeding Set</title>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('assets/cat2.jpg') no-repeat center center / cover;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 400px;
+            position: relative;
+            z-index: 100;
+        }
+
+        h2 {
+            text-align: center;
+            color: #fff;
+        }
+
+        form {
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        input[type="number"], input[type="text"] {
+            width: calc(100% - 24px);
+            padding: 10px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.5);
+            color: #333;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        button {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 15px 30px;
+            cursor: pointer;
+            width: calc(100% - 24px);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: rgba(0, 0, 0, 0.6);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        #currentTime {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 18px;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>設定餵食</h2>
+        <form id="parameterForm">
+            <label for="valueInput">設置數值（不大於500）</label>
+            <input type="number" id="valueInput" name="valueInput" min="0" max="500" required>
+            <label for="timeInput">設置時間（24小時制，格式：HHMM）</label>
+            <input type="text" id="timeInput" name="timeInput" placeholder="HHMM" required>
+            <div class="button-container">
+                <button type="button" onclick="setParameter()">設置數值</button>
+                <button type="button" onclick="setTime()">設置時間</button>
+                <button type="button" onclick="location.href='home.html'">Return to menu</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function setParameter() {
+            const valueInput = document.getElementById('valueInput').value;
+
+            fetch('http://192.168.1.107/set-value', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'value=' + encodeURIComponent(valueInput),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('設置數值失敗');
+                }
+                return response.text();
+            })
+            .then(data => {
+                console.log('數值設置成功', data);
+            })
+            .catch(error => {
+                console.error('數值設置失敗', error);
+            });
+        }
+
+        function setTime() {
+            const timeInput = document.getElementById('timeInput').value;
+
+            fetch('http://192.168.1.107/set-time', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'time=' + encodeURIComponent(timeInput),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('設置時間失敗');
+                }
+                return response.text();
+            })
+            .then(data => {
+                console.log('時間設置成功', data);
+            })
+            .catch(error => {
+                console.error('時間設置失敗', error);
+            });
+        }
+
+        // function getCurrentTime() {
+        //     fetch('http://192.168.1.107/get-time')
+        //     .then(response => {
+        //         if (!response.ok) {
+        //             throw new Error('獲取時間失敗');
+        //         }
+        //         return response.text();
+        //     })
+        //     .then(data => {
+        //         document.getElementById('currentTime').innerText = '當前時間：' + data;
+        //     })
+        //     .catch(error => {
+        //         console.error('獲取時間失敗', error);
+        //     });
+        // }
+
+        window.onload = function() {
+            getCurrentTime();
+            setInterval(getCurrentTime, 1000);  // 每秒更新一次時間
+        }
+    </script>
+</body>
+</html>

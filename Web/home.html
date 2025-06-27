@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: url('assets/cat2.jpg') no-repeat center center / cover;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.5);
+            width: 100%;
+            padding: 20px 0;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        button {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 15px 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button.logout-button {
+            padding: 10px 20px;
+        }
+
+        button:hover {
+            background-color: rgba(0, 0, 0, 0.6);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .logout-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>功能選單</h1>
+        <button class="logout-button" onclick="window.location='index.php'">登出</button>
+    </header>
+
+    <div class="button-container">
+        <button onclick="window.location='addcat.html'">建立身分</button>
+        <button onclick="window.location='timeset.html'">設定餵食</button>
+        <a href="http://192.168.1.107"><button>環境數據</button></a>
+        <button onclick="window.location='filechange.php'">修改檔案</button>
+        <button onclick="window.location='getfile.php'">檔案查詢</button>
+        <button onclick="runWeightCheck()">體重檢測</button>
+        <a href="http://127.0.0.1:5000"><button>辨識通知</button></a>
+        <button onclick="window.location.href = 'camera.html'">觀看監控</button>
+    </div>
+
+    <script>
+        function runWeightCheck() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'linenotify.php', true);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    alert('體重檢測完成！');
+                }
+            };
+            xhr.send();
+        }
+    </script>
+</body>
+
+</html>
