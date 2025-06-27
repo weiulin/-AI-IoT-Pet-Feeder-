@@ -62,3 +62,6 @@ Siamese Network 結構輸入兩張圖片，比對相似度
 損失函數為 Contrastive Loss，強化同一貓 / 不同貓之區別距離
 
 訓練資料來源為模擬用戶僅提供 3–5 張照片的情境，強調泛化能力
+
+影像辨識模型、權重參數以及測試資料集:
+https://drive.google.com/drive/folders/1VhXw4aGsTtyeqfiXoZtsd8aljN0QuCUN
