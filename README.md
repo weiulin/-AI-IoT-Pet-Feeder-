@@ -19,6 +19,7 @@ MQTT / 串列通訊整合
 MySQL
 
 🎯 專案特色
+
 ✅ 自動餵食控制（可遠端調整餵食量）
 
 ✅ 體重、濕度感測器資料即時上傳與顯示
@@ -53,7 +54,7 @@ pet_feeder_project/
 ├── static/                # 靜態圖片與樣式
 ├── README.md
 
-📈 模型訓練說明（精簡）
+📈 模型訓練說明
 使用 ResNet-18 為特徵擷取 backbone
 
 Siamese Network 結構輸入兩張圖片，比對相似度
